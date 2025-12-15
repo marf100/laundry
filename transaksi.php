@@ -89,7 +89,7 @@ if (isset($_GET['selesai'])) {
             }
             
             // Buat nota dengan format yang lebih baik
-            $nota = "🧺 *LAUNDRY SMBD* 🧺%0A";
+            $nota = "🧺 *Cuci.in* 🧺%0A";
             $nota .= "═══════════════════════════%0A%0A";
             $nota .= "✅ *Cucian Anda Sudah Selesai!*%0A%0A";
             $nota .= "📋 *Detail Transaksi*%0A";
@@ -108,7 +108,7 @@ if (isset($_GET['selesai'])) {
             $nota .= "Total: *Rp " . number_format($data['total_harga'], 0, ',', '.') . "*%0A%0A";
             $nota .= "═══════════════════════════%0A";
             $nota .= "Terima kasih sudah menggunakan%0A";
-            $nota .= "layanan *Laundry SMBD*! 🙏✨%0A%0A";
+            $nota .= "layanan *Cuci.in*! 🙏✨%0A%0A";
             $nota .= "Silakan ambil cucian Anda 🎉";
             
             // URL WhatsApp dengan nota
@@ -152,7 +152,7 @@ if (isset($_GET['wa_redirect']) && isset($_SESSION['wa_url'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Data Transaksi - Laundry SMBD</title>
+    <title>Data Transaksi - Cuci.in</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>

@@ -119,7 +119,7 @@ while ($row = $result->fetch_assoc()) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Laundry SMBD</title>
+    <title>Dashboard - Cuci.in</title>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
@@ -789,8 +789,8 @@ while ($row = $result->fetch_assoc()) {
                     <i class="fas fa-soap"></i>
                 </div>
                 <div class="logo-text">
-                    <h1>Laundry SMBD</h1>
-                    <p>Sistem Manajemen Laundry Modern</p>
+                    <h1>Cuci.in</h1>
+                    <p>Sistem Manajemen Laundry </p>
                 </div>
             </div>
             <div class="header-actions">
@@ -994,7 +994,7 @@ while ($row = $result->fetch_assoc()) {
 
 
     <div class="dashboard-footer">
-        <strong>&copy; 2025 Laundry SMBD.</strong> All rights reserved. | Version 2.0.0
+        <strong>&copy; 2025 Cuci.in.</strong> All rights reserved. | Version 2.0.0
     </div>
 
     <!-- Chart.js -->
