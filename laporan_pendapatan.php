@@ -44,24 +44,15 @@ if ($koneksi->connect_error) {
     <a href="index.php" class="btn btn-secondary mb-4">← Kembali ke Dashboard</a>
 
     <?php
-    $query = "SELECT tanggal_selesai, SUM(total_harga) AS total 
-              FROM laporan 
-              GROUP BY tanggal_selesai 
-              ORDER BY tanggal_selesai DESC";
-    $result = $koneksi->query($query);
-    $no = 1;
-    $grand_total = 0;
+    // Hitung total keseluruhan pendapatan dari transaksi yang selesai
+    $total_result = $koneksi->query("SELECT SUM(total_harga) AS grand_total FROM transaksi WHERE STATUS = 'selesai'");
+    $total_data = $total_result->fetch_assoc();
+    $grand_total = $total_data['grand_total'] ?? 0;
     ?>
 
     <div class="card mb-4">
         <div class="card-body text-center">
             <h5 class="card-title">Total Keseluruhan Pendapatan</h5>
-            <?php
-            // Hitung total keseluruhan pendapatan
-            $total_result = $koneksi->query("SELECT SUM(total_harga) AS grand_total FROM laporan");
-            $total_data = $total_result->fetch_assoc();
-            $grand_total = $total_data['grand_total'] ?? 0;
-            ?>
             <h2 class="text-success">Rp <?= number_format($grand_total, 0, ',', '.') ?></h2>
         </div>
     </div>
@@ -71,20 +62,34 @@ if ($koneksi->connect_error) {
         <tr>
             <th>No</th>
             <th>Tanggal Selesai</th>
+            <th>Pelanggan</th>
+            <th>Layanan</th>
             <th>Total Pendapatan</th>
         </tr>
         </thead>
         <tbody class="text-center">
         <?php
-        // Jalankan ulang query
+        $query = "SELECT t.tanggal_selesai, t.total_harga, p.nama_pelanggan,
+                  GROUP_CONCAT(l.nama_layanan SEPARATOR ', ') AS layanan
+                  FROM transaksi t 
+                  JOIN pelanggan p ON t.id_pelanggan = p.id_pelanggan
+                  LEFT JOIN detail_transaksi dt ON t.id_transaksi = dt.id_transaksi
+                  LEFT JOIN layanan l ON dt.id_layanan = l.id_layanan
+                  WHERE t.STATUS = 'selesai'
+                  GROUP BY t.id_transaksi
+                  ORDER BY t.tanggal_selesai DESC";
         $result = $koneksi->query($query);
+        $no = 1;
+        
         while ($row = $result->fetch_assoc()) {
             $tanggal = date('d M Y', strtotime($row['tanggal_selesai']));
-            $total = $row['total'];
+            $total = $row['total_harga'];
 
             echo "<tr>
                     <td>{$no}</td>
                     <td>{$tanggal}</td>
+                    <td>{$row['nama_pelanggan']}</td>
+                    <td>{$row['layanan']}</td>
                     <td>Rp " . number_format($total, 0, ',', '.') . "</td>
                   </tr>";
             $no++;
@@ -93,7 +98,7 @@ if ($koneksi->connect_error) {
         </tbody>
         <tfoot>
             <tr class="text-center">
-                <td colspan="2">Total Keseluruhan</td>
+                <td colspan="4">Total Keseluruhan</td>
                 <td>Rp <?= number_format($grand_total, 0, ',', '.') ?></td>
             </tr>
         </tfoot>

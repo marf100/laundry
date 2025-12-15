@@ -6,10 +6,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $username = $_POST['username'];
     $password = $_POST['password'];
 
-    // Hardcoded user (ganti sesuai database jika perlu)
-    if ($username === 'admin' && $password === 'admin123') {
+    // Cek user di database
+    $query = "SELECT * FROM user WHERE username = '$username' AND password = '$password'";
+    $result = $koneksi->query($query);
+
+    if ($result->num_rows > 0) {
+        $user = $result->fetch_assoc();
+        
         $_SESSION['admin_logged_in'] = true;
-        $_SESSION['id_user'] = 1;
+        $_SESSION['id_user'] = $user['id_user'];
+        $_SESSION['username'] = $user['username'];
+        $_SESSION['role'] = $user['role']; // Simpan role (admin/kasir)
+        
         header("Location: index.php");
         exit();
     } else {
