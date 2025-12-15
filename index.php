@@ -799,7 +799,7 @@ while ($row = $result->fetch_assoc()) {
                         <i class="fas fa-user"></i>
                     </div>
                     <div>
-                        <div style="font-weight: 600; color: var(--dark);">Admin</div>
+                        <div style="font-weight: 600; color: var(--dark);">Hello Admin</div>
                         <div style="font-size: 0.8rem; color: var(--gray);">Administrator</div>
                     </div>
                 </div>
