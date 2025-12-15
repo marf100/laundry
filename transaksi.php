@@ -60,10 +60,11 @@ if (isset($_GET['hapus'])) {
 if (isset($_GET['selesai'])) {
     $id = $_GET['selesai'];
     
-    // Ambil data untuk nota SEBELUM update status
-    $query = "SELECT t.*, p.nama_pelanggan, p.no_hp, 
-              GROUP_CONCAT(l.nama_layanan SEPARATOR ', ') AS layanan,
-              SUM(dt.berat_kg) AS total_berat
+    // Ambil data lengkap untuk nota
+    $query = "SELECT t.*, p.nama_pelanggan, p.no_hp, p.alamat,
+              GROUP_CONCAT(CONCAT(l.nama_layanan, ' (', dt.berat_kg, ' kg @ Rp', FORMAT(l.harga_per_kg, 0), ')') SEPARATOR '||') AS detail_layanan,
+              SUM(dt.berat_kg) AS total_berat,
+              SUM(dt.subtotal) AS total_harga_detail
               FROM transaksi t 
               JOIN pelanggan p ON t.id_pelanggan = p.id_pelanggan 
               LEFT JOIN detail_transaksi dt ON t.id_transaksi = dt.id_transaksi
@@ -75,41 +76,90 @@ if (isset($_GET['selesai'])) {
     
     if ($data) {
         // Update status menjadi 'selesai'
-        $koneksi->query("UPDATE transaksi SET STATUS = 'selesai' WHERE id_transaksi = $id");
+        $koneksi->query("UPDATE transaksi SET STATUS = 'selesai', tanggal_selesai = CURDATE() WHERE id_transaksi = $id");
         
         // Cek apakah ada nomor HP
         if (!empty($data['no_hp'])) {
             $no_hp = preg_replace('/[^0-9]/', '', $data['no_hp']);
             
-            // Format nomor HP untuk WhatsApp (tambahkan 62 jika diawali 0)
+            // Format nomor HP untuk WhatsApp
             if (substr($no_hp, 0, 1) === '0') {
                 $no_hp = '62' . substr($no_hp, 1);
             } elseif (substr($no_hp, 0, 2) !== '62') {
                 $no_hp = '62' . $no_hp;
             }
             
-            // Buat nota dengan format yang lebih baik
-            $nota = "🧺 *Cuci.in* 🧺%0A";
-            $nota .= "═══════════════════════════%0A%0A";
-            $nota .= "✅ *Cucian Anda Sudah Selesai!*%0A%0A";
-            $nota .= "📋 *Detail Transaksi*%0A";
+            // Parse detail layanan
+            $layanan_items = explode('||', $data['detail_layanan']);
+            $layanan_text = '';
+            foreach ($layanan_items as $item) {
+                $layanan_text .= '• ' . $item . '%0A';
+            }
+            
+            // Buat nota dengan format lengkap
+            $nota = "*═══════════════════════*%0A";
+            $nota .= "🧺 *CUCI.IN LAUNDRY* 🧺%0A";
+            $nota .= "*═══════════════════════*%0A%0A";
+            
+            $nota .= "✅ *CUCIAN ANDA SUDAH SELESAI!*%0A";
+            $nota .= "Terima kasih telah menggunakan layanan kami%0A%0A";
+            
             $nota .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━%0A";
-            $nota .= "No. Invoice: *#" . str_pad($data['id_transaksi'], 5, '0', STR_PAD_LEFT) . "*%0A";
-            $nota .= "Nama: *" . $data['nama_pelanggan'] . "*%0A";
-            $nota .= "Tgl Masuk: " . date('d/m/Y', strtotime($data['tanggal_masuk'])) . "%0A";
-            $nota .= "Tgl Selesai: " . date('d/m/Y', strtotime($data['tanggal_selesai'])) . "%0A%0A";
-            $nota .= "📦 *Layanan*%0A";
+            $nota .= "📋 *DETAIL TRANSAKSI*%0A";
             $nota .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━%0A";
-            $nota .= "• " . $data['layanan'] . "%0A";
-            $nota .= "• Berat: *" . $data['total_berat'] . " kg*%0A%0A";
-            $nota .= "💰 *Pembayaran*%0A";
+            $nota .= "🔖 No. Invoice: *#" . str_pad($data['id_transaksi'], 5, '0', STR_PAD_LEFT) . "*%0A";
+            $nota .= "👤 Nama: *" . $data['nama_pelanggan'] . "*%0A";
+            
+            if (!empty($data['alamat'])) {
+                $nota .= "📍 Alamat: " . $data['alamat'] . "%0A";
+            }
+            
+            $nota .= "📅 Tgl Masuk: " . date('d/m/Y', strtotime($data['tanggal_masuk'])) . "%0A";
+            $nota .= "✅ Tgl Selesai: " . date('d/m/Y', strtotime($data['tanggal_selesai'])) . "%0A%0A";
+            
             $nota .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━%0A";
-            $nota .= "Metode: *" . strtoupper($data['metode_pembayaran']) . "*%0A";
-            $nota .= "Total: *Rp " . number_format($data['total_harga'], 0, ',', '.') . "*%0A%0A";
-            $nota .= "═══════════════════════════%0A";
-            $nota .= "Terima kasih sudah menggunakan%0A";
-            $nota .= "layanan *Cuci.in*! 🙏✨%0A%0A";
-            $nota .= "Silakan ambil cucian Anda 🎉";
+            $nota .= "📦 *LAYANAN & DETAIL*%0A";
+            $nota .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━%0A";
+            $nota .= $layanan_text;
+            $nota .= "%0A";
+            $nota .= "⚖️ *Total Berat: " . $data['total_berat'] . " kg*%0A%0A";
+            
+            $nota .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━%0A";
+            $nota .= "💰 *RINCIAN PEMBAYARAN*%0A";
+            $nota .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━%0A";
+            
+            // Metode pembayaran dengan emoji
+            $metode_icon = '';
+            switch($data['metode_pembayaran']) {
+                case 'cash':
+                    $metode_icon = '💵';
+                    break;
+                case 'transfer':
+                    $metode_icon = '🏦';
+                    break;
+                case 'qris':
+                    $metode_icon = '📱';
+                    break;
+            }
+            
+            $nota .= $metode_icon . " Metode: *" . strtoupper($data['metode_pembayaran']) . "*%0A";
+            $nota .= "💵 Subtotal: Rp " . number_format($data['total_harga'], 0, ',', '.') . "%0A";
+            $nota .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━%0A";
+            $nota .= "💳 *TOTAL BAYAR: Rp " . number_format($data['total_harga'], 0, ',', '.') . "*%0A";
+            $nota .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━%0A%0A";
+            
+            $nota .= "🎉 *Cucian siap diambil!*%0A";
+            $nota .= "Silakan datang ke tempat kami%0A%0A";
+            
+            $nota .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━%0A";
+            $nota .= "📞 *Hubungi Kami*%0A";
+            $nota .= "WhatsApp: 0812-XXXX-XXXX%0A";
+            $nota .= "Alamat: Jl. Contoh No. 123%0A";
+            $nota .= "━━━━━━━━━━━━━━━━━━━━━━━━━━━%0A%0A";
+            
+            $nota .= "✨ Terima kasih telah mempercayai%0A";
+            $nota .= "*CUCI.IN LAUNDRY* 🙏%0A%0A";
+            $nota .= "Sampai jumpa lagi! 👋";
             
             // URL WhatsApp dengan nota
             $wa_url = "https://wa.me/$no_hp?text=$nota";
@@ -117,6 +167,8 @@ if (isset($_GET['selesai'])) {
             // Simpan URL ke session untuk redirect
             $_SESSION['wa_url'] = $wa_url;
             $_SESSION['wa_message'] = "Transaksi #{$data['id_transaksi']} untuk {$data['nama_pelanggan']} telah diselesaikan!";
+            $_SESSION['customer_name'] = $data['nama_pelanggan'];
+            $_SESSION['total_harga'] = $data['total_harga'];
             
             // Redirect ke halaman dengan JavaScript yang akan membuka WhatsApp
             header("Location: transaksi.php?wa_redirect=1");
@@ -138,12 +190,18 @@ if (isset($_GET['selesai'])) {
 $show_wa_modal = false;
 $wa_url = '';
 $wa_message = '';
+$customer_name = '';
+$total_harga = 0;
 if (isset($_GET['wa_redirect']) && isset($_SESSION['wa_url'])) {
     $show_wa_modal = true;
     $wa_url = $_SESSION['wa_url'];
     $wa_message = $_SESSION['wa_message'];
+    $customer_name = $_SESSION['customer_name'] ?? '';
+    $total_harga = $_SESSION['total_harga'] ?? 0;
     unset($_SESSION['wa_url']);
     unset($_SESSION['wa_message']);
+    unset($_SESSION['customer_name']);
+    unset($_SESSION['total_harga']);
 }
 ?>
 
@@ -325,81 +383,6 @@ if (isset($_GET['wa_redirect']) && isset($_SESSION['wa_url'])) {
             color: #475569;
         }
 
-        .qris-section {
-            margin-top: 1rem;
-            padding: 1.5rem;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
-            border-radius: 12px;
-            border: 2px dashed #667eea;
-        }
-
-        .qris-section h3 {
-            font-size: 1.1rem;
-            margin-bottom: 1rem;
-            color: #1e293b;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .qris-upload {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .qris-preview {
-            width: 150px;
-            height: 150px;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            background: white;
-        }
-
-        .qris-preview img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .qris-preview i {
-            font-size: 3rem;
-            color: #cbd5e1;
-        }
-
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-        }
-
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .file-input-label {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1.5rem;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            color: white;
-            border-radius: 10px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .file-input-label:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
         .table-container {
             overflow-x: auto;
         }
@@ -500,9 +483,37 @@ if (isset($_GET['wa_redirect']) && isset($_SESSION['wa_url'])) {
             .payment-methods {
                 grid-template-columns: 1fr;
             }
+        }
 
-            .qris-upload {
-                flex-direction: column;
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 0 20px rgba(37, 211, 102, 0);
             }
         }
     </style>
@@ -526,14 +537,14 @@ if (isset($_GET['wa_redirect']) && isset($_SESSION['wa_url'])) {
             <h2 style="margin-bottom: 1.5rem; color: #1e293b;">
                 <i class="fas fa-plus-circle" style="color: #667eea;"></i> Tambah Transaksi Baru
             </h2>
-            <form method="POST" enctype="multipart/form-data">
+            <form method="POST">
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Pelanggan</label>
                         <select name="id_pelanggan" class="form-control" required>
                             <option value="">-- Pilih Pelanggan --</option>
                             <?php
-                            $pelanggan = $koneksi->query("SELECT * FROM pelanggan");
+                            $pelanggan = $koneksi->query("SELECT * FROM pelanggan ORDER BY nama_pelanggan");
                             while ($row = $pelanggan->fetch_assoc()) {
                                 echo "<option value='{$row['id_pelanggan']}'>{$row['nama_pelanggan']}</option>";
                             }
@@ -546,7 +557,7 @@ if (isset($_GET['wa_redirect']) && isset($_SESSION['wa_url'])) {
                         <select name="id_layanan" class="form-control" required>
                             <option value="">-- Pilih Layanan --</option>
                             <?php
-                            $layanan = $koneksi->query("SELECT * FROM layanan");
+                            $layanan = $koneksi->query("SELECT * FROM layanan ORDER BY nama_layanan");
                             while ($row = $layanan->fetch_assoc()) {
                                 echo "<option value='{$row['id_layanan']}'>{$row['nama_layanan']} (Rp " . number_format($row['harga_per_kg'], 0, ',', '.') . "/kg)</option>";
                             }
@@ -589,38 +600,6 @@ if (isset($_GET['wa_redirect']) && isset($_SESSION['wa_url'])) {
                                 <i class="fas fa-qrcode"></i>
                                 <span>QRIS</span>
                             </label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- QRIS Section -->
-                <div class="qris-section">
-                    <h3>
-                        <i class="fas fa-qrcode"></i> Kode QRIS Laundry
-                    </h3>
-                    <div class="qris-upload">
-                        <div class="qris-preview" id="qrisPreview">
-                            <?php
-                            // Cek apakah file QRIS ada
-                            $qris_path = 'uploads/qris.png';
-                            if (file_exists($qris_path)) {
-                                echo "<img src='$qris_path' alt='QRIS'>";
-                            } else {
-                                echo "<i class='fas fa-qrcode'></i>";
-                            }
-                            ?>
-                        </div>
-                        <div>
-                            <p style="color: #64748b; margin-bottom: 1rem; font-size: 0.9rem;">
-                                <i class="fas fa-info-circle"></i> Upload atau perbarui kode QRIS untuk pembayaran digital
-                            </p>
-                            <div class="file-input-wrapper">
-                                <label for="qrisFile" class="file-input-label">
-                                    <i class="fas fa-upload"></i>
-                                    Upload QRIS
-                                </label>
-                                <input type="file" id="qrisFile" name="qris" accept="image/*" onchange="previewQRIS(this)">
-                            </div>
                         </div>
                     </div>
                 </div>
